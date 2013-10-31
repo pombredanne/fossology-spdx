@@ -14,12 +14,98 @@
  You should have received a copy of the Apache License along
  with this program; if not, contact to the Apache Software Foundation.
 ***********************************************************/
+function Spdx_output_attribution($SID) {
+	session_id($SID);
+	session_start();
+	include('../../../lib/php/common-db.php');
+	$PG_CONN =  DBconnect("/etc/fossology/"); // install from package
+  //$PG_CONN =  DBconnect("/usr/local/etc/fossology/"); // install from source
+  getGlobalEnv("/etc/fossology/");
+  global $OUTPUT_FILE;
+	$UNKNOWN = 'UNKNOWN';
+	$NONE = 'NONE';
+	$LICENSE_NOMOS="License by Nomos.";
+	$spdxId = $_SESSION['spdxId'];
+	$packageInfoPk = $_SESSION['packageInfoPk'];
+	$buffer = "";
+	$lastLicense =
+	
+	
+	//File Information
+	//select File Information
+	$sql = "select * from spdx_file_info 
+		where package_info_fk = '$packageInfoPk'
+		and  spdx_fk = '$spdxId'
+		ORDER By license_concluded DESC , filename";
+  $result = pg_query($PG_CONN, $sql);
+  DBCheckResult($result, $sql, __FILE__, __LINE__);
+  
+  $buffer.= "License,File Name,File Type,License Concluded,License Info In File,License Comments,File Copyright Text,File Comment\r\n";
+	while ($fileInfo = pg_fetch_assoc($result))
+	{
+		if($fileInfo['license_concluded'] != $lastLicense){
+			$buffer.=",,,,,,,\r\n";
+			$buffer.=$fileInfo['license_concluded'].",,,,,,,\r\n";					
+		}
+		$buffer.= checkCsvQuotes($fileInfo['license_concluded']).",";
+		$buffer.= checkCsvQuotes($fileInfo['filename']).",";
+		$buffer.= checkCsvQuotes($fileInfo['filetype']).",";
+		$buffer.= checkCsvQuotes($fileInfo['license_concluded']).",";
+		$buffer.= checkCsvQuotes($fileInfo['license_info_in_file']).",";
+		$buffer.= checkCsvQuotes($fileInfo['license_comment']).",";
+		$buffer.= checkCsvQuotes($fileInfo['file_copyright_text']).",";
+		$buffer.= checkCsvQuotes($fileInfo['file_comment'])."\r\n";			    
+		$lastLicense =$fileInfo['license_concluded'];
+	}	
+	$licenses = array();
+
+  pg_free_result($result);
+	
+	//select license info and license name
+	$sql = "select * from spdx_extracted_lic_info
+		where spdx_fk = '$spdxId'";
+		
+	$result = pg_query($PG_CONN, $sql);
+	DBCheckResult($result, $sql, __FILE__, __LINE__);
+  
+	while ($fileInfo = pg_fetch_assoc($result))
+	{
+		$licenses[$fileInfo['identifier']] = $fileInfo['license_display_name'];
+	}	
+	
+	foreach ($licenses as $key => $value){
+		$pattern = '/LicenseRef-'.$key.'/';
+		$replacement = "$value";
+		$buffer = preg_replace($pattern, $replacement, $buffer);
+	}
+	
+  $fileSuffix = $_SESSION['fileSuffix'];
+	if ( strlen($buffer) == 0){
+		$buffer = $NOVALIDINFO;
+	}
+	//write tag file
+	//WriteFile($buffer,'/../output_file/attribution'.$fileSuffix.'.csv');
+	WriteFile($buffer,$OUTPUT_FILE.'/attribution'.$fileSuffix.'.csv');
+}
+
+function checkCsvQuotes($string) {
+    if (strpos($string,'"') !== false) {
+        return '"'.str_replace('"','""',$string).'"';
+    } elseif (strpos($string,',') !== false || strpos($string,"\n") !== false) {
+        return '"'.$string.'"';
+    } else {
+        return $string;
+    }
+}
+
 function Spdx_output_notice($SID) {
 	session_id($SID);
 	session_start();
 	include('../../../lib/php/common-db.php');
 	$PG_CONN =  DBconnect("/etc/fossology/"); // install from package
   //$PG_CONN =  DBconnect("/usr/local/etc/fossology/"); // install from source
+  getGlobalEnv("/etc/fossology/");
+  global $OUTPUT_FILE;
 	$UNKNOWN = 'UNKNOWN';
 	$NONE = 'NONE';
 	$LICENSE_NOMOS="License by Nomos.";
@@ -31,7 +117,7 @@ function Spdx_output_notice($SID) {
 				from (select regexp_split_to_table((select * from (SELECT license_info_from_files from spdx_package_info where spdx_fk=$spdxId) as T), E',') as lic_name) as lic_list
 				where 'LicenseRef-'<> substring(lic_list.lic_name from 1 for 11)
 				UNION
-				select distinct(spdx_extracted_lic_info.licensename) as lic_name
+				select distinct(spdx_extracted_lic_info.license_display_name) as lic_name
 				from (select regexp_split_to_table((select * from (SELECT license_info_from_files from spdx_package_info where spdx_fk=$spdxId) as T), E',') as lic_name) as lic_list, spdx_extracted_lic_info
 				where concat('LicenseRef-',spdx_extracted_lic_info.identifier) = lic_list.lic_name
 				and spdx_extracted_lic_info.spdx_fk = $spdxId";
@@ -68,7 +154,8 @@ function Spdx_output_notice($SID) {
 		$buffer = $NOVALIDINFO;
 	}
 	//write NOTICE1 file
-	WriteFile($buffer,'/../output_file/NOTICE'.$fileSuffix);
+	//WriteFile($buffer,'/../output_file/NOTICE'.$fileSuffix);
+	WriteFile($buffer,$OUTPUT_FILE.'/NOTICE'.$fileSuffix);
 }
 function Spdx_output_notice2($SID) {
 	session_id($SID);
@@ -76,6 +163,8 @@ function Spdx_output_notice2($SID) {
 	include('../../../lib/php/common-db.php');
 	$PG_CONN =  DBconnect("/etc/fossology/"); // install from package
   //$PG_CONN =  DBconnect("/usr/local/etc/fossology/"); // install from source
+  getGlobalEnv("/etc/fossology/");
+  global $OUTPUT_FILE;
 	$UNKNOWN = 'UNKNOWN';
 	$NONE = 'NONE';
 	$LICENSE_NOMOS="License by Nomos.";
@@ -97,7 +186,7 @@ function Spdx_output_notice2($SID) {
 					from (select regexp_split_to_table((select * from (SELECT license_info_from_files from spdx_package_info where spdx_fk=$spdxId) as T), E',') as lic_name) as lic_list--license_ref
 					where 'LicenseRef-'<> substring(lic_list.lic_name from 1 for 11)
 					UNION
-					select distinct(spdx_extracted_lic_info.licensename) as lic_name, concat('LicenseRef-',spdx_extracted_lic_info.identifier) as lic_id
+					select distinct(spdx_extracted_lic_info.license_display_name) as lic_name, concat('LicenseRef-',spdx_extracted_lic_info.identifier) as lic_id
 					from (select regexp_split_to_table((select * from (SELECT license_info_from_files from spdx_package_info where spdx_fk=$spdxId) as T), E',') as lic_name) as lic_list, spdx_extracted_lic_info--license_ref
 					where concat('LicenseRef-',spdx_extracted_lic_info.identifier) = lic_list.lic_name
 					and spdx_extracted_lic_info.spdx_fk = $spdxId";
@@ -142,7 +231,8 @@ function Spdx_output_notice2($SID) {
 		$buffer = $NOVALIDINFO;
 	}
 	//write NOTICE2 file
-	WriteFile($buffer,'/../output_file/NOTICE2'.$fileSuffix);
+	//WriteFile($buffer,'/../output_file/NOTICE2'.$fileSuffix);
+	WriteFile($buffer,$OUTPUT_FILE.'/NOTICE2'.$fileSuffix);
 }
 function Spdx_output_tag($SID) {
 	session_id($SID);
@@ -150,6 +240,10 @@ function Spdx_output_tag($SID) {
 	include('../../../lib/php/common-db.php');
 	$PG_CONN =  DBconnect("/etc/fossology/"); // install from package
   //$PG_CONN =  DBconnect("/usr/local/etc/fossology/"); // install from source
+  //global $OUTPUT_FILE;
+  //$OUTPUT_FILE = getenv('OUTPUT_FILE');
+  getGlobalEnv("/etc/fossology/");
+  global $OUTPUT_FILE;
 	$UNKNOWN = 'UNKNOWN';
 	$NONE = 'NONE';
 	$LICENSE_NOMOS="License by Nomos.";
@@ -167,9 +261,11 @@ function Spdx_output_tag($SID) {
 		$buffer = $buffer.'DataLicense: '.$creationInfo["data_license"]."\r\n";
 		$buffer = $buffer.'DocumentComment: <text>'.$creationInfo["document_comment"]."</text>\r\n";
 		$buffer = $buffer."\r\n## Creation Information\r\n";
-		$buffer = $buffer.'Creator: '.$creationInfo["creator"]."\r\n";
-		$buffer = $buffer.'Creator: '.$creationInfo["creator_optional1"]."\r\n";
-		$buffer = $buffer.'Creator: '.$creationInfo["creator_optional2"]."\r\n";
+		$creatorInfoArr = explode("\r\n",$creationInfo["creator"]);
+		foreach ($creatorInfoArr as $creatorInfo)
+		{
+			$buffer = $buffer.'Creator: '.$creatorInfo."\r\n";
+		}
 		$createdDate = str_replace(" ","T",$creationInfo["created_date"])."Z";
 		$buffer = $buffer.'Created: '.$createdDate."\r\n";
 		$buffer = $buffer.'CreatorComment: <text>'.$creationInfo["creator_comment"]."</text>\r\n";
@@ -179,7 +275,8 @@ function Spdx_output_tag($SID) {
 	$buffer = $buffer."\r\n## Package Information\r\n";
   //select Package Information
 	$sql = "SELECT * from spdx_package_info 
-	        where package_info_pk=$packageInfoPk and spdx_fk=$spdxId";
+	        where package_info_pk=$packageInfoPk and spdx_fk=$spdxId
+	        order by name";
   $result = pg_query($PG_CONN, $sql);
   DBCheckResult($result, $sql, __FILE__, __LINE__);
   while ($packageInfo = pg_fetch_assoc($result))
@@ -187,14 +284,21 @@ function Spdx_output_tag($SID) {
   	$buffer = $buffer.'PackageName: '.$packageInfo["name"]."\r\n";
 		$buffer = $buffer.'PackageVersion: '.$packageInfo["version"]."\r\n";
 		$buffer = $buffer.'PackageDownloadLocation: '.IsNONE($packageInfo["download_location"])."\r\n";
-		$buffer = $buffer.'PackageSummary: '.$packageInfo["summary"]."\r\n";
+		$buffer = $buffer.'PackageSummary: <text>'.$packageInfo["summary"]."</text>\r\n";
 		$buffer = $buffer.IsOptionalItem('PackageSourceInfo: ',$packageInfo["source_info"],"\r\n");
-		//$buffer = $buffer.'PackageSourceInfo: '.$packageInfo["source_info"]."\r\n";
 		$buffer = $buffer.'PackageFileName: '.$packageInfo["filename"]."\r\n";
 		$buffer = $buffer.'PackageSupplier: '.$packageInfo["supplier_type"].IsNOASSERTION($packageInfo["supplier"])."\r\n";
 		$buffer = $buffer.'PackageOriginator: '.$packageInfo["originator_type"].IsNOASSERTION($packageInfo["originator"])."\r\n";
-		$buffer = $buffer.'PackageChecksum: SHA1: '.$packageInfo["checksum"]."\r\n"; //not perform the following(If the SPDX file is to be included in a package, this value should not be calculated).
-		$buffer = $buffer.'PackageVerificationCode: '.$packageInfo["verificationcode"]."\r\n";
+		$buffer = $buffer.'PackageChecksum: SHA1: '.strtolower($packageInfo["checksum"])."\r\n"; //not perform the following(If the SPDX file is to be included in a package, this value should not be calculated).
+		$buffer = $buffer.'PackageVerificationCode: '.$packageInfo["verificationcode"];
+		if (!empty($packageInfo["verificationcode_excludedfiles"]))
+		{
+			$buffer = $buffer.'(excludes: '.$packageInfo["verificationcode_excludedfiles"].")\r\n";
+		}
+		else
+		{
+			$buffer = $buffer."\r\n";
+		}
 		$buffer = $buffer.'PackageDescription: <text>'.$packageInfo["description"]."</text>\r\n\r\n";
 		$buffer = $buffer.'PackageCopyrightText: <text>'.IsNONE($packageInfo["package_copyright_text"])."</text>\r\n\r\n";
 		$buffer = $buffer.'PackageLicenseDeclared: '.IsNONEParenthesis($packageInfo["license_declared"])."\r\n";
@@ -221,14 +325,15 @@ function Spdx_output_tag($SID) {
 	$buffer = $buffer."\r\n## File Information\r\n";
 	//select File Information
 	$sql = "SELECT * from spdx_file_info 
-	        where package_info_fk=$packageInfoPk and spdx_fk=$spdxId";
+	        where package_info_fk=$packageInfoPk and spdx_fk=$spdxId
+	        order by filename";
   $result = pg_query($PG_CONN, $sql);
   DBCheckResult($result, $sql, __FILE__, __LINE__);
   while ($fileInfo = pg_fetch_assoc($result))
   {
-  	$buffer = $buffer.'FileName: '.$fileInfo["filename"]."\r\n";
+  	$buffer = $buffer."\r\nFileName: ".$fileInfo["filename"]."\r\n";
 		$buffer = $buffer.'FileType: '.$fileInfo["filetype"]."\r\n";
-		$buffer = $buffer.'FileChecksum: SHA1: '.$fileInfo["checksum"]."\r\n";
+		$buffer = $buffer.'FileChecksum: SHA1: '.strtolower($fileInfo["checksum"])."\r\n";
 		$buffer = $buffer.'LicenseConcluded: '.IsNONEParenthesis($fileInfo["license_concluded"])."\r\n";
 
 		$licenseInfoInFileArr = explode(",",$fileInfo["license_info_in_file"]);
@@ -246,7 +351,7 @@ function Spdx_output_tag($SID) {
 		{
 			$buffer = $buffer.'LicenseInfoInFile: '.IsNONE($licenseInfoInFileArr[0])."\r\n";
 		}
-		$buffer = $buffer.'FileCopyrightText: <text>'.IsNONE($fileInfo["file_copyright_text"])."</text>\r\n\r\n";
+		$buffer = $buffer.'FileCopyrightText: <text>'.IsNONE($fileInfo["file_copyright_text"])."</text>\r\n";
 		$buffer = $buffer.IsOptionalItem('ArtifactOfProjectName: ',$fileInfo["artifact_of_project"],"\r\n");
 		$buffer = $buffer.IsOptionalItem('ArtifactOfProjectHomePage: ',$fileInfo["artifact_of_homepage"],"\r\n");
 		$buffer = $buffer.IsOptionalItem('ArtifactOfProjectURI: ',$fileInfo["artifact_of_url"],"\r\n");
@@ -258,12 +363,13 @@ function Spdx_output_tag($SID) {
 	$buffer = $buffer."\r\n## License Information\r\n";
   //select Extracted License Information
 	$sql = "SELECT identifier,
-								 licensename,
+								 license_display_name as licensename,
 	               cross_ref_url,
 	               lic_comment,
 	               rf_text
 	        from spdx_extracted_lic_info, license_ref
-	        where spdx_fk=$spdxId and rf_shortname = licensename";
+	        where spdx_fk=$spdxId and rf_shortname = licensename
+	        order by identifier";
   $result = pg_query($PG_CONN, $sql);
   DBCheckResult($result, $sql, __FILE__, __LINE__);
   while ($extractedLicenseInfo = pg_fetch_assoc($result))
@@ -289,11 +395,13 @@ function Spdx_output_tag($SID) {
 		$buffer = $NOVALIDINFO;
 	}
 	//write tag file
-	WriteFile($buffer,'/../output_file/spdx'.$fileSuffix.'.tag');
+	//WriteFile($buffer,'/../output_file/spdx'.$fileSuffix.'.tag');
+	WriteFile($buffer,$OUTPUT_FILE.'/spdx'.$fileSuffix.'.tag');
 }
 function WriteFile($buffer,$filename)
 {
-	$file = dirname(__FILE__).$filename;
+	//$file = dirname(__FILE__).$filename;
+	$file = $filename;
 	touch($file);
 	$fh = fopen($file,'w');
 	fwrite($fh,$buffer);
@@ -350,5 +458,65 @@ function IsOptionalItem($label1,$v,$label2)
   {
   	return '';
   }
+}
+//copy from bootstrap.php
+function getGlobalEnv($sysconfdir="")
+{
+  $rcfile = "fossology.rc";
+
+  if (empty($sysconfdir))
+  {
+    $sysconfdir = getenv('SYSCONFDIR');
+    if ($sysconfdir === false)
+    {
+      if (file_exists($rcfile)) $sysconfdir = file_get_contents($rcfile);
+      if ($sysconfdir === false)
+      {
+        /* NO SYSCONFDIR specified */
+        $text = _("FATAL! System Configuration Error, no SYSCONFDIR.");
+        echo "$text\n";
+        exit(1);
+      }
+    }
+  }
+
+  $sysconfdir = trim($sysconfdir);
+  $GLOBALS['SYSCONFDIR'] = $sysconfdir;
+
+  /*************  Parse fossologyspdx.conf *******************/
+  $ConfFile = "{$sysconfdir}/fossologyspdx.conf";
+  if (!file_exists($ConfFile))
+  {
+    $text = _("FATAL! Missing configuration file: $ConfFile");
+    echo "$text\n";
+    exit(1);
+  }
+  $SysConf = parse_ini_file($ConfFile, true);
+  if ($SysConf === false)
+  {
+    $text = _("FATAL! Invalid configuration file: $ConfFile");
+    echo "$text\n";
+    exit(1);
+  }
+
+  /* evaluate all the DIRECTORIES group for variable substitutions.
+   * For example, if PREFIX=/usr/local and BINDIR=$PREFIX/bin, we
+   * want BINDIR=/usr/local/bin
+   */
+  foreach($SysConf['DIRECTORIES'] as $var=>$assign)
+  {
+    /* Evaluate the individual variables because they may be referenced
+     * in subsequent assignments.
+     */
+    $toeval = "\$$var = \"$assign\";";
+    eval($toeval);
+
+    /* now reassign the array value with the evaluated result */
+    $SysConf['DIRECTORIES'][$var] = ${$var};
+    $GLOBALS[$var] = ${$var};
+  }
+  require_once("$MODDIR/www/ui/template/template-plugin.php");
+  require_once("$MODDIR/lib/php/common.php");
+  return $SysConf;
 }
 ?>

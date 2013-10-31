@@ -36,7 +36,6 @@ class spdx_packageInfoEdit_confirm extends FO_Plugin
     }
     global $PG_CONN;
     $V = "";
-
     switch($this->OutputType) {
       case "XML":
         break;
@@ -44,6 +43,7 @@ class spdx_packageInfoEdit_confirm extends FO_Plugin
         $Uri = Traceback_uri();
 				$Val_SpdxId = htmlentities(GetParm('spdxId', PARM_TEXT), ENT_QUOTES);
 				$Val_PackageInfoPk = htmlentities(GetParm('packageInfoPk', PARM_TEXT), ENT_QUOTES);
+
         /* Build HTML form */
         $V.= "<form name='packageEditAny' method='POST' action='" . $Uri . "?mod=spdx_packageInfoEdit_accept'>\n";
         $V.= "<input type='hidden' value='$Val_SpdxId' name='spdxId'>\n";
@@ -55,6 +55,7 @@ class spdx_packageInfoEdit_confirm extends FO_Plugin
         $Style = "<tr><td colspan=3 style='background:black;'></td></tr><tr>";
         $V.= "<table style='border:1px solid black; text-align:left; background:lightyellow; table-layout: fixed;' width='100%'>";
         $Val = htmlentities(GetParm('packagename', PARM_TEXT), ENT_QUOTES);
+        $Val_PackageName = $Val;
         $text = _("Package Name");
         $V.= "$Style<th width='25%'>$text <font color='red'>*</font></th>";
         $V.= "<td><input type='hidden' value='$Val' name='packagename'>$Val</td>\n";
@@ -87,19 +88,20 @@ class spdx_packageInfoEdit_confirm extends FO_Plugin
         $V.= "<td><input type='hidden' value='$Val' name='packagedownloadlocation'>$Val</td>\n";
         $V.= "</tr>\n";
         $Val = htmlentities(GetParm('packagechecksum', PARM_TEXT), ENT_QUOTES);
+		$lowercaseChecksum = strtolower($Val);
         $text = _("Package Checksum");
         $V.= "$Style<th width='25%'>$text</th>";
-        $V.= "<td><input type='hidden' value='$Val' name='packagechecksum'>$Val</td>\n";
+        $V.= "<td><input type='hidden' value='$Val' name='packagechecksum'>$lowercaseChecksum</td>\n";
         $V.= "</tr>\n";
         $Val = htmlentities(GetParm('packageverificationcode', PARM_TEXT), ENT_QUOTES);
         $text = _("Package Verification Code");
         $V.= "$Style<th width='25%'>$text</th>";
         $V.= "<td><input type='hidden' value='$Val' name='packageverificationcode'>$Val</td>\n";
         $V.= "</tr>\n";
-        $Val = htmlentities(GetParm('verificationcodeexcludedfiles', PARM_TEXT), ENT_QUOTES);
+        $Val = htmlentities(GetParm('vcExcludedfiles', PARM_TEXT), ENT_QUOTES);
         $text = _("Verification Code Excluded Files");
         $V.= "$Style<th width='25%'>$text</th>";
-        $V.= "<td><input type='hidden' value='$Val' name='verificationcodeexcludedfiles'>$Val</td>\n";
+        $V.= "<td><input type='hidden' value='$Val' name='vcExcludedfiles'>$Val</td>\n";
         $V.= "</tr>\n";
         $Val = htmlentities(GetParm('sourceinfo', PARM_TEXT), ENT_QUOTES);
         $text = _("Source Info");
@@ -141,34 +143,8 @@ class spdx_packageInfoEdit_confirm extends FO_Plugin
         $V.= "$Style<th width='25%'>$text</th>";
         $V.= "<td><input type='hidden' value='$Val' name='description'>$Val</td>\n";
         $V.= "</tr>\n";
-        $V.= "</table><P />";
-        
-        /* Get extracted lic info of the package */
-        
-        $sql = "select identifier, license_ref.rf_text as extractedtext, licensename, cross_ref_url, lic_comment, rf_text from spdx_extracted_lic_info, license_ref
-				where spdx_fk = $Val_SpdxId
-				and licensename = rf_shortname
-				order by identifier";
-        $result = pg_query($PG_CONN, $sql);
-        DBCheckResult($result, $sql, __FILE__, __LINE__);
-        if (pg_num_rows($result) > 0){
-        	$text = _("Extracted Lic Info");
-	        $V .= "$text<br>\n";
-	        $V.= "<table border='1' width='100%'>";
-	        $V.= "<tbody><tr><th width='10%'>Identifier</th><th width='15%'>Extracted Text</th><th width='15%'>License Name</th><th width='15%'>Cross Reference URLs</th><th width='40%'>Comment</th><th>&nbsp;</th></tr>";
-	        pg_result_seek($result, 0);
-	        while ($extractLic = pg_fetch_assoc($result))
-	        {
-	        	$V.= "<tr><td align='left'>" . "LicenseRef-" . $extractLic['identifier'] . "</td><td align='left'>" . $extractLic['extractedtext'] . "</td><td align='left'>" . $extractLic['licensename'] . "</td><td align='left'>" . $extractLic['cross_ref_url'] . "</td><td align='left'style='overflow: hidden;'>" . $extractLic['lic_comment'] . "</td><td>edit</td></tr>";
-	        }
-	        $V.= "</tbody></table><br>";
-	        pg_result_seek($result, 0);
-	      }
-	      $text = _("File: ");
-	      $filelistTest = _("File List");
-	      // file info edit
-		  	$filelistURI = "";
-	      $V .= "$text $filelistTest\n";
+        $V.= "<tr><td colspan='3' style='background:black;'></td></tr>\n";
+        $V.= "</table><P/>";
 	      $V.= "\n<button type='button' onclick='history.back();'>Back</button>\n";
         $text = _("Update");
         $V.= "\n<input type='submit' value='$text'>\n";

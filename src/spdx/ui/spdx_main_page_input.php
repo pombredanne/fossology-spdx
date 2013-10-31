@@ -74,23 +74,12 @@ class spdx_main_page_input extends FO_Plugin
         $V.= "<td><select name='spdxVersion'><option value='SPDX-1.1'>SPDX-1.1</option></select></td>\n";
         $V.= "</tr>\n";
         $Val = htmlentities(GetParm('creator', PARM_TEXT), ENT_QUOTES);
-        $text = _("Creator");
+				$text = _("Creator");
         $V.= "$Style<th width='25%'>$text <font color='red'>*</font></th>";
-        $V.= "<td><input type='text' value='$Val' name='creator' size=20></td>\n";
-        $V.= "</tr>\n";
-        $Val = htmlentities(GetParm('creatorOptional1', PARM_TEXT), ENT_QUOTES);
-        $text = _("Creator optional1");
-        $V.= "$Style<th>$text</th>\n";
-        $V.= "<td><input type='text' name='creatorOptional1' value='$Val' size=20></td>\n";
-        $V.= "</tr>\n";
-        $Val = htmlentities(GetParm('creatorOptional2', PARM_TEXT), ENT_QUOTES);
-        $text = _("Creator optional2");
-        $V.= "$Style<th>$text</th>\n";
-        $V.= "<td><input type='text' name='creatorOptional2' value='$Val' size=20></td>\n";
+        $V.= "<td><textarea cols = '50' rows = '3' name='creator' size=20>$Val</textarea></td>\n";
         $V.= "</tr>\n";
         $Val = htmlentities(GetParm('createdDate', PARM_TEXT), ENT_QUOTES);
         if( empty($Val)) {
-        	//$Val = Date("Y-m-d g:i:s");
         	$ValDate = Date("Y-m-d");
         	$ValTime = Date("H:i:s");
         }
@@ -113,7 +102,8 @@ class spdx_main_page_input extends FO_Plugin
         $V.= "$Style<th>$text</th>\n";
         $V.= "<td><input type='text' name='documentComment' value='$Val' size=60></td>\n";
         $V.= "</tr>\n";
-        $V.= "</table><P />";
+        $V.= "<tr><td colspan='3' style='background:black;'></td></tr>\n";
+        $V.= "</table><P/>";
         /* Get the list of packages */
         $sql = "select uploadtree.pfile_fk as pfile_pk, max(upload_origin||'('||upload_desc||')') as pkg_name, max(uploadtree_pk) as uploadtree_pk
 								from upload , uploadtree
@@ -145,6 +135,10 @@ class spdx_main_page_input extends FO_Plugin
         $text = _("Next");
         $V.= "\n<input type='submit' value='$text'>\n";
         $V.= "</form>\n";
+        $text = "SPDX (The Software Package Data Exchange) specification is a standard format for communicating the components, licenses and copyrights associated with a software package. For more information, visit: ";
+        $URL = "http://www.spdx.org";
+        $textURL = "http://www.spdx.org";
+        $V .= "$text<a href='$URL'target='_blank'>$textURL</a> \n";
         break;
     case "Text":
       break;

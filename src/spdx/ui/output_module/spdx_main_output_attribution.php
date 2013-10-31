@@ -16,10 +16,10 @@
 ***********************************************************/
   $fileSuffix = $_GET['fileSuffix'];
 	include('spdx_output_db.php');
-  Spdx_output_tag($fileSuffix);
-	//$target_path = iconv("UTF-8","gb2312", dirname(__FILE__).'/../output_file/spdx'.$fileSuffix.'.tag');
-	$target_path = iconv("UTF-8","gb2312", $OUTPUT_FILE.'/spdx'.$fileSuffix.'.tag');
-	$filename1 = iconv("UTF-8","gb2312",'spdx.tag');
+	Spdx_output_attribution($fileSuffix);
+	//$target_path = iconv('UTF-8', 'ASCII//TRANSLIT', dirname(__FILE__).'/../output_file/attribution'.$fileSuffix.'.csv');
+	$target_path = iconv('UTF-8', 'ASCII//TRANSLIT', $OUTPUT_FILE.'/attribution'.$fileSuffix.'.csv');
+	$filename1 = iconv('UTF-8', 'ASCII//TRANSLIT', 'attribution.csv');
 	$filename = $target_path;
 	//filetype
 	header("Content-length: ".filesize($filename));
